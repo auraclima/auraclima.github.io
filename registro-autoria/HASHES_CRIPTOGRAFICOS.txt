@@ -1,0 +1,74 @@
+================================================================================
+RELATÓRIO DE INTEGRIDADE CRIPTOGRÁFICA (HASHES) - SOFTWARE AURA CLIMA
+Gerado em: 15/11/2026 13:24:29
+Base Legal: Lei nº 9.609/1998 (Lei do Software) e Lei nº 9.610/1998 (Direitos Autorais)
+Finalidade: Registro no INPI (Resumo Criptográfico SHA-512) e Selo de Autoria / Blockchain
+================================================================================
+
+1. ARQUIVO CONSOLIDADO DO CÓDIGO-FONTE (Para o sistema do INPI / Selo de Autoria)
+--------------------------------------------------------------------------------
+Arquivo: AuraClima_CodigoFonte.zip
+Tamanho: 50478 bytes
+
+>> HASH OFICIAL EXIGIDO PELO INPI (SHA-512) <<
+640e74a3941e22ed98b79d8e22cace4d7af0ee6dc3a688bec332b5bc91e0810deb68ca6938488b62cd37e906728aa4e7dd01f238960ec9d1d851937ba78fec6e
+
+>> HASH PARA SELO DE AUTORIA / BLOCKCHAIN (SHA-256) <<
+dbd5e4d5d8f57209750c13970eb26cb8274dc3991f4d6a6569d79defa2bcc16b
+
+>> HASH AUXILIAR (MD5) <<
+8307d2801b00f393c7d49a0f1b22c586
+
+================================================================================
+2. RESUMO CRIPTOGRÁFICO INDIVIDUAL DOS ARQUIVOS DE CÓDIGO-FONTE
+================================================================================
+
+Arquivo: index.html (58401 bytes)
+  SHA-512: 546191564bdb03f0ca948cfe50c52622a2a13dee438660b826c680115162f2ed33717938b16db4f4e656f4c54f916bcb985f03cb96bc7658d95a0f68419dedfb
+  SHA-256: 1af61c73298b27e387c719651b6b547e19d5c9e2ae0407f0b0ec83f78a39aa5c
+  MD5:     7eb24f726a830f3a821714a888e5be8f
+
+Arquivo: css/style.css (13233 bytes)
+  SHA-512: 6263e6c6091c0b409d099b3abff9715c335c3aeeb0bedc0128e7ae4f7065b41aec592875febd40798c0f99c06ff464fb23db20e222512e876c26027f6cebf300
+  SHA-256: e9fefa61efb14e0360636046091424000fd3f3c4c990f7166b32639bcca023b5
+  MD5:     043d78d50ec646f7450cb13bcb4f9d9e
+
+Arquivo: js/api.js (5789 bytes)
+  SHA-512: dfdcc2b7711ff83dd78827e5f464295a3004696d14fa1ae59c36b91264987df446ef44c565e6f8a31496a383da3f914d392f6676eca64af33d31adf856341912
+  SHA-256: 1ccbc044cc12ab35a7aba980957f8527834a6701f771ada5551bf625f30da811
+  MD5:     dca9fa24d288e0aaa717a2c3ca9c5664
+
+Arquivo: js/app.js (54792 bytes)
+  SHA-512: ceb812725244435786f55ec3e05fd98fac1c2ec347787ebbeb65e20ab35a85f854c4306257b0605c33b7baf966b37c6b2e1c23c5dc60e0974ecbd14a6f2e8feb
+  SHA-256: e71e4cae029106a8c16d286f43100335d785d7048ad8b4c0508048d59cc21a73
+  MD5:     0d98df97e7fdcabbbf23e470eedbe7c8
+
+Arquivo: js/route-planner.js (35520 bytes)
+  SHA-512: f4deffe4f0893144895147605991cf590cd3454c86c1f099689482ea922c1878f7bf064363089bbe07c316fd892ef67c00326c8dd5df39250bef557ebf774823
+  SHA-256: 3eeaf8a21b9214b0167e4a21a1cb012843fa6f03dc0174a99d9eb5af5b04912b
+  MD5:     b92df86826d76a606f7cc2e5a0b50b6a
+
+Arquivo: js/weather-codes.js (12860 bytes)
+  SHA-512: c797fd4bbb2460094b21b6464b9d76fc2dab7ac7ae96816a4b33e1f288076dd5b838086e60cc2c13024743dbcd345165b184063cbd49c9c29dff2d556567f02c
+  SHA-256: 2b4d54dbae7cc0ca04595dc49715b73676ae0c80dd3afa86173fe1bf56ec8cad
+  MD5:     ec2b9f999cf6eed9fc25bd5a7a884599
+
+Arquivo: sw.js (1973 bytes)
+  SHA-512: dfb8cff0995675f1aea76cf7935dbee6622f2277549d141cf5e0c44104102b8603858e84197ff7c66983c13db226b5e1d7f20b21fdd9eb47f64b24c25f4b0728
+  SHA-256: fe3b91db6ece70dfbbe400cc38ddb9d6bde8c7d4bae1357643c7510ef3beef9a
+  MD5:     3c9a20a1346f8ea72b3fbbc44d59251e
+
+Arquivo: manifest.json (671 bytes)
+  SHA-512: cba5b3051a2e77422d543654dd53efc5f38eb675d5b4382c7957276af426ae31bf56097f6008a42f5a2d86180dd0a3be5f9f788e4bee09e5673a7f31c808126e
+  SHA-256: e67ce000ddfa66b03257cac0755f704b0a898c6ef00e3098543950ab4ca61ce6
+  MD5:     7a3b502a4965fec76cdef453f03d683a
+
+Arquivo: icon.svg (1252 bytes)
+  SHA-512: c2596bd9c1e4b338d1dfbb04aa9c563b42287e48d5dbdd41bdc15dc80dfe557755ee2c5d1d10a251a5519bed006195ffe6d128491325dcfe6b6f72ace2cbd7d1
+  SHA-256: 8e4e9de86efd626c7a64a9020ee72e742816545f562471ac1b66347c0725c408
+  MD5:     649b8f373c89a92aef51b71e1628fa47
+
+Arquivo: README.md (6011 bytes)
+  SHA-512: 1ab098bab717d425ac866c8dc8fb778c1ed5af4c056d48844c426ace545274311778a1c5156fbb7ab42e344e42e51f22eeb73605d1d07e21b79d59c6148a2915
+  SHA-256: d46e754fda64a5bf122713de82197bb6d3f495a0c36c290c92e7462121ecc582
+  MD5:     8a7b4fb6c058233678470d22e0c24f04

@@ -1,5 +1,9 @@
 # 🌤️ Aura Clima - Previsão do Tempo & Gerador de Rota com GPS
 
+[![Selo de Autoria](https://img.shields.io/badge/Selo_de_Autoria-SA--20261115--1DDF473C-0891b2)](https://selo-de.autoria-tech.workers.dev/?verify=SA-20261115-1DDF473C)
+[![Licença: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-emerald.svg)](https://auraclima.github.io/)
+
 Um aplicativo moderno, ultra-completo e responsivo de **Meteorologia, Previsão do Tempo e Planejamento de Rotas com GPS**, construído com **HTML5**, **Tailwind CSS**, **JavaScript Vanilla**, **Leaflet Maps**, **Open-Meteo API** e suporte a **PWA (Progressive Web App)**.
 
 O aplicativo utiliza estética **Glassmorphism**, fundos dinâmicos que se adaptam às condições meteorológicas e horário do dia, animação de partículas em Canvas (chuva, neve, poeira solar e estrelas) e gráficos vetoriais interativos.

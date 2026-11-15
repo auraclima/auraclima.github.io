@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aura Clima | Previsão do Tempo em Tempo Real</title>
+  
+  <!-- Fontes do Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+            heading: ['Outfit', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Leaflet Maps CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Estilos Customizados & Glassmorphism -->
+  <link rel="stylesheet" href="css/style.css" />
+  
+  <!-- Suporte a PWA -->
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0ea5e9" />
+</head>
+<body class="antialiased min-h-screen text-slate-100 flex flex-col justify-between selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- Fundo Dinâmico com Camada e Partículas -->
+  <div id="ambient-bg" class="bg-ambient-layer theme-clear-day"></div>
+  <canvas id="ambient-canvas"></canvas>
+
+  <!-- Container Principal -->
+  <div class="relative z-10 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 flex flex-col">
+
+    <!-- Topbar / Cabeçalho -->
+    <header class="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
+      
+      <!-- Marca / Logo -->
+      <div class="flex items-center gap-3 select-none">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-500 p-0.5 shadow-lg shadow-sky-500/20">
+          <div class="w-full h-full bg-slate-950/40 rounded-[14px] flex items-center justify-center backdrop-blur-sm">
+            <i data-lucide="cloud-sun" class="w-6 h-6 text-sky-300"></i>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight font-heading flex items-center gap-1.5">
+            Aura <span class="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-indigo-300 font-extrabold">Clima</span>
+          </h1>
+          <p class="text-[11px] text-slate-400 font-medium tracking-wide">METEOROLOGIA EM TEMPO REAL</p>
+        </div>
+      </div>
+
+      <!-- Barra de Pesquisa e Ações Rápidas -->
+      <div class="flex items-center gap-2.5 w-full md:w-auto flex-1 md:max-w-md justify-end">
+        
+        <!-- Campo de Pesquisa com Autocomplete -->
+        <div class="relative flex-1">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Buscar cidade ou país..."
+              autocomplete="off"
+              class="w-full pl-10 pr-4 py-2.5 rounded-2xl glass-input text-sm text-white placeholder-slate-400 focus:outline-none transition-all duration-200"
+            />
+          </div>
+
+          <!-- Dropdown de Resultados da Pesquisa -->
+          <div
+            id="search-results"
+            class="hidden absolute top-full left-0 right-0 mt-2 rounded-2xl glass-panel overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto"
+          ></div>
+        </div>
+
+        <!-- Botão de Minha Localização (GPS) -->
+        <button
+          id="btn-geolocation"
+          title="Usar minha localização atual"
+          class="glass-card glass-card-hover p-2.5 rounded-2xl text-slate-300 hover:text-sky-300 flex items-center justify-center flex-shrink-0"
+        >
+          <i data-lucide="crosshair" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Botão de Alternar Unidade (°C / °F) -->
+        <button
+          id="btn-unit-toggle"
+          title="Alternar entre Celsius e Fahrenheit"
+          class="glass-card glass-card-hover px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-200 hover:text-sky-300 flex items-center gap-1 flex-shrink-0 tracking-wider"
+        >
+          <span id="unit-label">°C</span>
+        </button>
+
+        <!-- Botão Compartilhar Geral -->
+        <button
+          id="btn-share-page"
+          onclick="openShareModal('page')"
+          title="Compartilhar previsão atual"
+          class="glass-card glass-card-hover px-3 py-2.5 rounded-2xl text-xs font-bold text-sky-300 hover:text-white flex items-center gap-1.5 flex-shrink-0 border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/25 transition-all cursor-pointer"
+        >
+          <i data-lucide="share-2" class="w-4 h-4 text-sky-400"></i>
+          <span class="hidden sm:inline">Compartilhar</span>
+        </button>
+
+        <!-- Botão Apoiar com PIX -->
+        <button
+          id="btn-open-pix-modal"
+          onclick="openPixModal()"
+          title="Apoiar o projeto Aura Clima"
+          class="glass-card glass-card-hover px-3 py-2.5 rounded-2xl text-xs font-bold text-rose-300 hover:text-white flex items-center gap-1.5 flex-shrink-0 border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/25 transition-all cursor-pointer"
+        >
+          <i data-lucide="heart" class="w-4 h-4 text-rose-400 fill-rose-400/40"></i>
+          <span class="hidden sm:inline">Apoiar</span>
+        </button>
+
+      </div>
+    </header>
+
+    <!-- Navegação Principal entre Abas: Clima Geral vs Rota de Viagem -->
+    <nav class="flex items-center gap-3 mb-6 border-b border-white/10 pb-3">
+      <button
+        id="tab-btn-weather"
+        onclick="switchAppTab('weather')"
+        class="active px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all border border-sky-400/40 bg-sky-500/20 text-sky-300 shadow-md shadow-sky-500/10 cursor-pointer"
+      >
+        <i data-lucide="cloud-sun" class="w-4 h-4"></i>
+        <span>Previsão Geral</span>
+      </button>
+
+      <button
+        id="tab-btn-route"
+        onclick="switchAppTab('route')"
+        class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all border border-transparent text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer"
+      >
+        <i data-lucide="navigation" class="w-4 h-4 text-rose-400"></i>
+        <span>Rota & Viagem com GPS</span>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-extrabold uppercase border border-rose-500/30">Novo</span>
+      </button>
+    </nav>
+
+    <!-- ==================== ABA 1: CLIMA GERAL ==================== -->
+    <div id="view-weather-dashboard" class="flex flex-col flex-1">
+
+      <!-- Barra de Cidades Favoritas -->
+      <section class="mb-6 flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+        <div class="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider pl-1 pr-2 flex-shrink-0">
+          <i data-lucide="bookmark" class="w-3.5 h-3.5 text-sky-400"></i>
+          <span>Favoritos:</span>
+        </div>
+        <div id="favorites-list" class="flex items-center gap-2 flex-nowrap">
+          <!-- Pílulas de Favoritos geradas via JS -->
+        </div>
+      </section>
+
+      <!-- Dashboard Principal -->
+      <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+      
+      <!-- Coluna Esquerda: Hero Card + Previsão Horária (7 Colunas) -->
+      <div class="lg:col-span-7 flex flex-col gap-6">
+        
+        <!-- Banner de Alerta Meteorológico (Dinâmico) -->
+        <div id="weather-alert-banner" class="hidden alert-banner p-4 flex items-center gap-3.5">
+          <div id="alert-icon-wrap" class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-500/20 text-amber-300">
+            <i id="alert-icon" data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <h4 id="alert-title" class="text-xs font-bold uppercase tracking-wider text-white">Alerta Climático</h4>
+            <p id="alert-message" class="text-xs text-slate-200 mt-0.5">Mensagem do alerta</p>
+          </div>
+        </div>
+
+        <!-- Card Hero de Clima Atual -->
+        <div id="hero-card" class="glass-panel p-6 sm:p-8 relative overflow-hidden flex flex-col justify-between min-h-[320px]">
+          
+          <!-- Cabeçalho do Card: Cidade, País e Botão de Favorito -->
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 id="city-name" class="text-2xl sm:text-4xl font-extrabold text-white font-heading tracking-tight">
+                  Carregando...
+                </h2>
+                <button
+                  id="btn-toggle-favorite"
+                  title="Salvar nos Favoritos"
+                  class="glass-pill p-2 text-slate-400 hover:text-amber-400 transition-colors"
+                >
+                  <i data-lucide="star" class="w-5 h-5"></i>
+                </button>
+                <button
+                  id="btn-hero-share"
+                  onclick="openShareModal('page')"
+                  title="Compartilhar clima desta cidade"
+                  class="glass-pill p-2 text-slate-400 hover:text-sky-400 transition-colors"
+                >
+                  <i data-lucide="share-2" class="w-5 h-5"></i>
+                </button>
+              </div>
+              <p id="city-location" class="text-sm sm:text-base text-slate-300 mt-1 font-medium flex items-center gap-1.5">
+                Localizando...
+              </p>
+              <p id="current-date" class="text-xs text-slate-400 mt-0.5 capitalize">
+                --
+              </p>
+            </div>
+
+            <!-- Ícone Principal Flutuante com Efeito Glow -->
+            <div id="hero-weather-icon" class="flex-shrink-0">
+              <i data-lucide="sun" class="w-20 h-20 text-amber-300 sun-glow animate-float"></i>
+            </div>
+          </div>
+
+          <!-- Seção de Temperatura e Condição -->
+          <div class="mt-8 pt-4 border-t border-white/5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div class="flex items-baseline gap-2">
+                <span id="current-temp" class="text-6xl sm:text-8xl font-black font-heading tracking-tighter text-white">
+                  --°
+                </span>
+                <span class="text-slate-400 text-lg font-medium">atual</span>
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <span id="weather-condition" class="text-base sm:text-lg font-semibold text-sky-200">
+                  Aguardando dados...
+                </span>
+              </div>
+            </div>
+
+            <!-- Mínima, Máxima e Sensação Térmica -->
+            <div class="flex flex-col items-end gap-1.5 text-right">
+              <div class="flex items-center gap-2 text-sm font-semibold">
+                <span class="text-rose-400 flex items-center gap-0.5">
+                  <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+                  <span id="temp-max">--°</span>
+                </span>
+                <span class="text-slate-500">•</span>
+                <span class="text-sky-400 flex items-center gap-0.5">
+                  <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+                  <span id="temp-min">--°</span>
+                </span>
+              </div>
+              <p class="text-xs text-slate-400">
+                Sensação térmica de <strong id="apparent-temp" class="text-slate-200 font-bold">--°</strong>
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Card de Previsão Horária (Próximas 24 Horas) -->
+        <div class="glass-panel p-5 sm:p-6 flex flex-col">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-sky-400"></i>
+              <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Previsão Horária (24h)</h3>
+            </div>
+            
+            <!-- Controle Segmentado: Cards vs Gráfico -->
+            <div class="segmented-control">
+              <button id="btn-view-cards" class="segmented-btn active flex items-center gap-1.5">
+                <i data-lucide="layout-grid" class="w-3 h-3"></i>
+                <span>Cards</span>
+              </button>
+              <button id="btn-view-chart" class="segmented-btn flex items-center gap-1.5">
+                <i data-lucide="line-chart" class="w-3 h-3"></i>
+                <span>Gráfico</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Carrossel de Horas com rolagem suave (Modo Cards) -->
+          <div
+            id="hourly-forecast-list"
+            class="flex items-center gap-3 overflow-x-auto pb-2 snap-x custom-scrollbar"
+          >
+            <!-- Preenchido dinamicamente via JS -->
+          </div>
+
+          <!-- Gráfico SVG Interativo de Tendência Térmica (Modo Gráfico) -->
+          <div id="hourly-chart-view" class="hidden hourly-chart-container custom-scrollbar pt-2">
+            <!-- Gerado dinamicamente via JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Coluna Direita: Métricas Detalhadas do Clima (5 Colunas) -->
+      <div class="lg:col-span-5 flex flex-col gap-6">
+
+        <!-- Grid de Cards de Destaque -->
+        <div class="grid grid-cols-2 gap-4">
+          
+          <!-- Card 1: Vento -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="wind" class="w-3.5 h-3.5 text-sky-400"></i>
+                Vento
+              </span>
+              <div id="compass-needle" class="compass-arrow text-sky-400">
+                <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div>
+              <p id="wind-speed" class="text-2xl font-bold font-heading text-white">-- km/h</p>
+              <p id="wind-dir-text" class="text-[11px] text-slate-400 mt-1 truncate">Direção --</p>
+            </div>
+          </div>
+
+          <!-- Card 2: Umidade -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="droplets" class="w-3.5 h-3.5 text-sky-400"></i>
+                Umidade
+              </span>
+            </div>
+            <div>
+              <p id="humidity-val" class="text-2xl font-bold font-heading text-white">--%</p>
+              <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                <div id="humidity-bar" class="bg-sky-400 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <p id="humidity-desc" class="text-[11px] text-slate-400 mt-1 truncate">Calculando...</p>
+            </div>
+          </div>
+
+          <!-- Card 3: Índice UV -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="sun-medium" class="w-3.5 h-3.5 text-amber-400"></i>
+                Índice UV
+              </span>
+              <span id="uv-badge" class="text-xs px-2 py-0.5 rounded-full font-semibold border bg-slate-800 text-slate-400 border-slate-700">--</span>
+            </div>
+            <div>
+              <p id="uv-val" class="text-2xl font-bold font-heading text-white">--</p>
+              <p id="uv-desc" class="text-[11px] text-slate-400 mt-1 truncate">--</p>
+            </div>
+          </div>
+
+          <!-- Card 4: Qualidade do Ar -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="activity" class="w-3.5 h-3.5 text-emerald-400"></i>
+                Ar (AQI)
+              </span>
+              <span id="aqi-badge" class="text-xs px-2 py-0.5 rounded-full font-semibold border bg-slate-800 text-slate-400 border-slate-700">--</span>
+            </div>
+            <div>
+              <p id="aqi-val" class="text-2xl font-bold font-heading text-white">--</p>
+              <p id="aqi-desc" class="text-[11px] text-slate-400 mt-1 truncate">Monitoramento local</p>
+            </div>
+          </div>
+
+          <!-- Card 5: Chance de Chuva -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-sky-400"></i>
+                Chuva Hoje
+              </span>
+            </div>
+            <div>
+              <p id="rain-chance-val" class="text-2xl font-bold font-heading text-white">--%</p>
+              <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                <div id="rain-chance-bar" class="bg-blue-400 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1 truncate">Probabilidade máxima</p>
+            </div>
+          </div>
+
+          <!-- Card 6: Pressão Atmosférica -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="gauge" class="w-3.5 h-3.5 text-indigo-400"></i>
+                Pressão
+              </span>
+            </div>
+            <div>
+              <p id="pressure-val" class="text-2xl font-bold font-heading text-white">-- hPa</p>
+              <p class="text-[11px] text-slate-400 mt-1 truncate">Nível da superfície</p>
+            </div>
+          </div>
+
+          <!-- Card 7: Visibilidade & Orvalho -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-teal-400"></i>
+                Visibilidade
+              </span>
+            </div>
+            <div>
+              <p id="visibility-val" class="text-2xl font-bold font-heading text-white">-- km</p>
+              <p id="dewpoint-val" class="text-[11px] text-slate-400 mt-1 truncate">Orvalho: --°</p>
+            </div>
+          </div>
+
+          <!-- Card 8: Fase Lunar -->
+          <div class="glass-card glass-card-hover p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <i data-lucide="moon" class="w-3.5 h-3.5 text-indigo-300"></i>
+                Fase da Lua
+              </span>
+              <div id="moon-phase-icon" class="text-indigo-300">
+                <i data-lucide="moon" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div>
+              <p id="moon-phase-name" class="text-lg font-bold font-heading text-white truncate">--</p>
+              <p id="moon-illumination" class="text-[11px] text-slate-400 mt-1 truncate">--% iluminada</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Card Especial: Nascer e Pôr do Sol -->
+        <div class="glass-card p-4 sm:p-5 flex flex-col justify-between">
+          <div class="flex items-center gap-2 mb-3 text-slate-300">
+            <i data-lucide="sunrise" class="w-4 h-4 text-amber-400"></i>
+            <h3 class="text-xs font-bold uppercase tracking-wider">Ciclo Solar (Hoje)</h3>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 divide-x divide-white/10">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <i data-lucide="sunrise" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400 block font-medium">Nascer do Sol</span>
+                <span id="sunrise-time" class="text-base font-bold text-white">--:--</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pl-4">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <i data-lucide="sunset" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400 block font-medium">Pôr do Sol</span>
+                <span id="sunset-time" class="text-base font-bold text-white">--:--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Seção Inferior de Largura Completa: Previsão dos Próximos 7 Dias (12 Colunas) -->
+      <div class="lg:col-span-12">
+        <div class="glass-panel p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="calendar" class="w-4 h-4 text-sky-400"></i>
+              <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Previsão dos Próximos 7 Dias</h3>
+            </div>
+            <span class="text-xs text-slate-400">Temperaturas mínimas e máximas</span>
+          </div>
+
+          <!-- Lista de Dias da Semana -->
+          <div id="daily-forecast-list" class="flex flex-col">
+            <!-- Preenchido via JavaScript -->
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    </div> <!-- Fim de view-weather-dashboard -->
+
+    <!-- ==================== ABA 2: ROTA & VIAGEM COM GPS ==================== -->
+    <div id="view-route-dashboard" class="hidden flex flex-col gap-6 flex-1">
+
+      <!-- Formulário de Planejamento de Rota -->
+      <div class="glass-panel p-6 sm:p-7 flex flex-col gap-5">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 p-0.5 flex items-center justify-center">
+              <i data-lucide="map" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <h3 class="text-base sm:text-lg font-bold font-heading text-white">Gerador de Rota & Clima da Viagem</h3>
+              <p class="text-xs text-slate-400">Verifique o clima no trajeto, no destino e exporte para seu GPS</p>
+            </div>
+          </div>
+          <span class="text-xs text-sky-300 font-medium bg-sky-500/10 px-3 py-1 rounded-full border border-sky-500/20">
+            Tempo Real & Previsão por Dias
+          </span>
+        </div>
+
+        <!-- Campos de Origem e Destino -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Campo Origem -->
+          <div class="relative">
+            <label class="text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+              Ponto de Partida (Origem)
+            </label>
+            <div class="relative">
+              <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input
+                type="text"
+                id="route-origin-input"
+                placeholder="Ex: São Paulo ou use o GPS..."
+                autocomplete="off"
+                class="w-full pl-10 pr-24 py-2.5 rounded-2xl glass-input text-sm text-white placeholder-slate-400 focus:outline-none"
+              />
+              <button
+                id="btn-route-origin-gps"
+                title="Usar minha localização atual"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all"
+              >
+                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                <span>Meu GPS</span>
+              </button>
+            </div>
+            <div id="route-origin-results" class="hidden absolute top-full left-0 right-0 mt-1.5 rounded-2xl glass-panel overflow-hidden shadow-2xl z-50 max-h-60 overflow-y-auto"></div>
+          </div>
+
+          <!-- Campo Destino -->
+          <div class="relative">
+            <label class="text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>
+              Ponto de Chegada (Destino)
+            </label>
+            <div class="relative">
+              <i data-lucide="flag" class="w-4 h-4 text-rose-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input
+                type="text"
+                id="route-dest-input"
+                placeholder="Ex: Ubatuba, Rio de Janeiro, Campos do Jordão..."
+                autocomplete="off"
+                class="w-full pl-10 pr-4 py-2.5 rounded-2xl glass-input text-sm text-white placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+            <div id="route-dest-results" class="hidden absolute top-full left-0 right-0 mt-1.5 rounded-2xl glass-panel overflow-hidden shadow-2xl z-50 max-h-60 overflow-y-auto"></div>
+          </div>
+        </div>
+
+        <!-- Linha de Período da Viagem -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div>
+            <label class="text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-400"></i>
+              Data da Partida
+            </label>
+            <input
+              type="date"
+              id="route-start-date"
+              class="w-full px-3.5 py-2.5 rounded-2xl glass-input text-sm text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-400"></i>
+              Quantos dias vai passar no destino?
+            </label>
+            <select
+              id="route-stay-days"
+              class="w-full px-3.5 py-2.5 rounded-2xl glass-input text-sm text-white focus:outline-none"
+            >
+              <option value="1" class="bg-slate-900 text-white">1 Dia (Bate e volta)</option>
+              <option value="2" class="bg-slate-900 text-white">2 Dias (Fim de semana)</option>
+              <option value="3" selected class="bg-slate-900 text-white">3 Dias (Feriado prolongado)</option>
+              <option value="4" class="bg-slate-900 text-white">4 Dias</option>
+              <option value="5" class="bg-slate-900 text-white">5 Dias</option>
+              <option value="7" class="bg-slate-900 text-white">7 Dias (Semana inteira)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ações Rápidas: Google Maps, Waze, GPX e Modo Viagem -->
+        <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-white/10">
+          <button
+            id="btn-open-google-maps"
+            class="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
+          >
+            <i data-lucide="map-pin" class="w-4 h-4"></i>
+            <span>Navegar no Google Maps</span>
+          </button>
+
+          <button
+            id="btn-open-waze"
+            class="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 shadow-lg shadow-sky-500/20 flex items-center gap-2 transition-all"
+          >
+            <i data-lucide="navigation" class="w-4 h-4"></i>
+            <span>Abrir no Waze</span>
+          </button>
+
+          <button
+            id="btn-download-gpx"
+            class="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-200 glass-card glass-card-hover hover:text-white flex items-center gap-2 transition-all border border-white/15 cursor-pointer"
+          >
+            <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+            <span>Baixar Rota GPS (.GPX)</span>
+          </button>
+
+          <button
+            id="btn-share-route"
+            onclick="RoutePlanner.shareRoute()"
+            class="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 shadow-lg shadow-teal-500/20 flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+            <span>Compartilhar Rota</span>
+          </button>
+
+          <button
+            id="btn-toggle-live-travel"
+            class="px-4 py-2.5 rounded-2xl text-xs font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 flex items-center gap-2 transition-all ml-auto"
+          >
+            <i data-lucide="navigation-2" class="w-4 h-4"></i>
+            <span>Iniciar Modo Viagem</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Travel HUD (Painel ao Vivo em Tempo Real) -->
+      <div id="live-travel-hud" class="hidden glass-panel p-5 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-sky-500/10">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-white">Modo Viagem Ativo • Acompanhamento em Tempo Real</h4>
+          </div>
+          <span class="text-xs text-slate-400">GPS ativo</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div class="glass-card p-3.5 flex flex-col items-center justify-center text-center">
+            <span class="text-[11px] text-slate-400 font-semibold uppercase">Sua Velocidade</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="live-speed-val" class="text-3xl font-black font-heading text-white">0</span>
+              <span class="text-xs text-slate-400 font-bold">km/h</span>
+            </div>
+          </div>
+
+          <div class="glass-card p-3.5 flex flex-col items-center justify-center text-center">
+            <span class="text-[11px] text-slate-400 font-semibold uppercase">Distância Restante</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="live-remaining-dist" class="text-2xl font-bold font-heading text-sky-300">-- km</span>
+            </div>
+          </div>
+
+          <div class="glass-card p-3.5 flex flex-col items-center justify-center text-center col-span-2 sm:col-span-1">
+            <span class="text-[11px] text-slate-400 font-semibold uppercase">Condição à Frente</span>
+            <span class="text-xs font-bold text-emerald-300 mt-1 flex items-center gap-1">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              Monitorando trajeto
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mapa Interativo da Rota (Em destaque) -->
+      <div class="glass-panel p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+            <i data-lucide="map" class="w-4 h-4 text-sky-400"></i>
+            <span>Visualização da Rota no Mapa</span>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-slate-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Sem chaves de API necessárias (Leaflet 100% Livre)</span>
+          </div>
+        </div>
+        
+        <div id="route-map" class="w-full rounded-2xl overflow-hidden border border-white/10 relative z-10" style="height: 440px; min-height: 440px;"></div>
+      </div>
+
+      <!-- Resumo da Rota & Comparativo de Clima -->
+      <div id="route-summary-panel" class="hidden glass-panel p-5 sm:p-6 flex flex-col gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
+          
+          <!-- Distância e Tempo -->
+          <div class="flex flex-col justify-center pr-4">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trajeto Estimado</span>
+            <p id="route-total-distance" class="text-3xl font-extrabold font-heading text-white mt-1">-- km</p>
+            <p id="route-total-duration" class="text-xs text-sky-300 font-medium mt-0.5">Tempo estimado: --</p>
+            <button
+              onclick="RoutePlanner.shareRoute()"
+              class="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-sky-300 hover:text-white hover:underline cursor-pointer"
+            >
+              <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+              <span>Compartilhar este trajeto por link</span>
+            </button>
+          </div>
+
+          <!-- Clima na Partida -->
+          <div class="pt-3 md:pt-0 md:px-4 flex items-center gap-3">
+            <div id="origin-weather-icon" class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="cloud" class="w-6 h-6 text-emerald-300"></i>
+            </div>
+            <div>
+              <span class="text-xs text-emerald-400 font-semibold uppercase block">Clima na Partida</span>
+              <span id="origin-weather-temp" class="text-xl font-extrabold text-white">--°</span>
+              <span id="origin-weather-desc" class="text-xs text-slate-300 block truncate">Calculando...</span>
+            </div>
+          </div>
+
+          <!-- Clima na Chegada (Destino) -->
+          <div class="pt-3 md:pt-0 md:pl-4 flex items-center gap-3">
+            <div id="dest-weather-icon" class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="cloud" class="w-6 h-6 text-rose-300"></i>
+            </div>
+            <div>
+              <span class="text-xs text-rose-400 font-semibold uppercase block">Clima no Destino</span>
+              <span id="dest-weather-temp" class="text-xl font-extrabold text-white">--°</span>
+              <span id="dest-weather-desc" class="text-xs text-slate-300 block truncate">Calculando...</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Alerta Meteorológico de Viagem / Estrada -->
+        <div id="route-weather-alert">
+          <!-- Gerado dinamicamente -->
+        </div>
+
+        <!-- Previsão Específica para os Dias no Destino -->
+        <div class="pt-3 border-t border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <i data-lucide="calendar" class="w-4 h-4 text-sky-400"></i>
+              Previsão no Destino para o Período da sua Viagem
+            </h4>
+            <span class="text-xs text-slate-400">Role para o lado →</span>
+          </div>
+
+          <div id="destination-stay-forecast" class="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
+            <!-- Cards dos dias gerados via JS -->
+          </div>
+        </div>
+
+        <!-- Card de Afiliado de Hospedagem / Booking.com -->
+        <div id="route-hotel-affiliate" class="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 glass-card p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-500/20">
+          <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="building" class="w-5 h-5 text-blue-400"></i>
+            </div>
+            <div>
+              <h5 class="text-xs font-bold text-white flex items-center gap-2">
+                <span>Onde se hospedar em <span id="affiliate-dest-name" class="text-sky-300">seu destino</span>?</span>
+                <span class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-extrabold uppercase border border-blue-500/30">Parceiro</span>
+              </h5>
+              <p class="text-[11px] text-slate-300 mt-0.5">Encontre pousadas e hotéis com os melhores preços e cancelamento grátis.</p>
+            </div>
+          </div>
+          <a
+            id="affiliate-hotel-btn"
+            href="https://www.booking.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 flex items-center gap-1.5 transition-all flex-shrink-0"
+          >
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            <span>Ver Ofertas no Booking</span>
+          </a>
+        </div>
+
+      </div>
+
+    </div> <!-- Fim de view-route-dashboard -->
+
+    <!-- ==========================================================================
+         Espaço Oficial para Banner Publicitário (100% Controlado por Você, Sem Spam)
+         ========================================================================== -->
+    <section class="mt-8 w-full max-w-4xl mx-auto flex flex-col items-center">
+      <div class="w-full flex items-center justify-between px-2 mb-2">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i data-lucide="megaphone" class="w-3.5 h-3.5 text-sky-400"></i>
+          Espaço Publicitário
+        </span>
+        <span class="text-[10px] text-slate-500">Parceiro Oficial</span>
+      </div>
+
+      <!-- Container do Banner (Substitua a imagem ou link quando desejar) -->
+      <div id="custom-banner-container" class="w-full rounded-2xl glass-panel p-2 overflow-hidden border border-white/10 hover:border-white/20 transition-all flex items-center justify-center min-h-[90px] bg-slate-900/40">
+        
+        <!-- COLOQUE SEU BANNER ABAIXO: Exemplo com Imagem e Link -->
+        <a
+          id="custom-banner-link"
+          href="https://auraclima.github.io/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-full flex items-center justify-center text-center p-4 rounded-xl group transition-all"
+        >
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 text-slate-300 group-hover:text-white">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="sparkles" class="w-5 h-5 text-sky-300"></i>
+            </div>
+            <div class="text-center sm:text-left">
+              <h4 class="text-sm font-bold text-white group-hover:text-sky-300 transition-colors">
+                Anuncie sua Marca ou Produto Aqui no Aura Clima
+              </h4>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Milhares de visualizações diárias. Espaço 100% limpo, seguro e com alta visibilidade.
+              </p>
+            </div>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- Rodapé -->
+    <footer class="mt-8 pt-4 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
+      <div class="flex items-center gap-2">
+        <span>Dados meteorológicos por</span>
+        <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-medium">
+          Open-Meteo API
+        </a>
+      </div>
+      <div class="flex items-center gap-4 flex-wrap">
+        <button id="btn-footer-share" onclick="openShareModal('page')" class="text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1 font-semibold cursor-pointer">
+          <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+          <span>Compartilhar</span>
+        </button>
+        <span class="text-slate-600">•</span>
+        <button id="btn-footer-pix" onclick="openPixModal()" class="text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1 font-semibold cursor-pointer">
+          <i data-lucide="heart" class="w-3.5 h-3.5 fill-rose-400/40"></i>
+          <span>Apoie via PIX</span>
+        </button>
+        <span class="text-slate-600">•</span>
+        <span>Aura Clima © 2026</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Modal de Detalhes do Dia Selecionado -->
+  <div id="day-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="glass-panel modal-content max-w-lg w-full p-6 relative">
+      <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white glass-pill p-1.5 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      
+      <div class="flex items-center gap-3.5 pb-4 border-b border-white/10">
+        <div id="modal-weather-icon" class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="sun" class="w-8 h-8 text-amber-300"></i>
+        </div>
+        <div>
+          <h3 id="modal-day-title" class="text-xl font-bold font-heading text-white">Quarta-feira</h3>
+          <p id="modal-day-date" class="text-xs text-slate-400">22 de Outubro • <span id="modal-weather-desc" class="text-sky-300 font-medium">Ensolarado</span></p>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-2 gap-3 text-sm" id="modal-details-grid">
+        <!-- Detalhes preenchidos via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Apoio via PIX -->
+  <div id="pix-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel modal-content max-w-md w-full p-6 sm:p-7 relative border border-rose-500/30 shadow-2xl">
+      <button id="btn-close-pix-modal" onclick="closePixModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white glass-pill p-1.5 transition-colors cursor-pointer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 pb-4 border-b border-white/10">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="heart" class="w-6 h-6 text-rose-400 fill-rose-400/40"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold font-heading text-white">Apoie o Aura Clima</h3>
+          <p class="text-xs text-slate-400">Ajude a manter os servidores e mapas online</p>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-col items-center text-center gap-4">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          O Aura Clima é um projeto 100% gratuito. Se você gosta do aplicativo e quer incentivar novas melhorias, você pode contribuir com qualquer valor via <b>PIX</b>!
+        </p>
+
+        <!-- QR Code do PIX -->
+        <div class="p-3 bg-white rounded-2xl shadow-xl flex items-center justify-center">
+          <img
+            id="pix-qr-code-img"
+            src=""
+            alt="QR Code PIX"
+            class="w-44 h-44 rounded-lg object-contain"
+          />
+        </div>
+
+        <!-- Chave PIX e Botões Copiar -->
+        <div class="w-full flex flex-col gap-2.5">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1 text-left">
+              Chave Aleatória:
+            </label>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                id="pix-key-input"
+                readonly
+                value="ac3aa8bd-f28f-46a0-8bbc-a6095d954e41"
+                class="w-full px-3.5 py-2.5 rounded-2xl glass-input text-xs text-slate-200 font-mono select-all focus:outline-none"
+              />
+              <button
+                id="btn-copy-pix"
+                title="Copiar Chave Aleatória"
+                class="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition-all flex-shrink-0 cursor-pointer"
+              >
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                <span id="copy-pix-label">Copiar</span>
+              </button>
+            </div>
+          </div>
+
+          <button
+            id="btn-copy-pix-payload"
+            class="w-full py-2.5 rounded-2xl text-xs font-bold text-sky-300 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <i data-lucide="qr-code" class="w-4 h-4"></i>
+            <span id="copy-payload-label">Copiar PIX Copia e Cola</span>
+          </button>
+        </div>
+
+        <p class="text-[11px] text-slate-400">
+          Muito obrigado pelo carinho e apoio! ❤️
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       Modal de Compartilhamento (Redes Sociais & Link Direto de Rota ou Página)
+       ========================================================================== -->
+  <div id="share-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel modal-content max-w-md w-full p-6 sm:p-7 relative border border-sky-500/30 shadow-2xl">
+      <button id="btn-close-share-modal" onclick="closeShareModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white glass-pill p-1.5 transition-colors cursor-pointer" title="Fechar">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Cabeçalho do Modal -->
+      <div class="flex items-center gap-3 pb-4 border-b border-white/10">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="share-2" class="w-6 h-6 text-sky-400"></i>
+        </div>
+        <div>
+          <h3 id="share-modal-title" class="text-lg font-bold font-heading text-white">Compartilhar Aura Clima</h3>
+          <p id="share-modal-subtitle" class="text-xs text-slate-400">Envie a previsão ou rota para amigos e redes</p>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-col gap-4">
+        <!-- Card de Pré-visualização do que está sendo compartilhado -->
+        <div id="share-preview-card" class="glass-card p-3.5 rounded-2xl border border-white/10 bg-slate-900/40 flex items-center gap-3">
+          <div id="share-preview-icon" class="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/25 flex items-center justify-center flex-shrink-0 text-sky-300">
+            <i data-lucide="cloud-sun" class="w-5 h-5"></i>
+          </div>
+          <div class="overflow-hidden flex-1">
+            <h4 id="share-preview-title" class="text-xs font-bold text-white truncate">Previsão em Tempo Real</h4>
+            <p id="share-preview-desc" class="text-[11px] text-slate-400 truncate">Aura Clima - Meteorologia precisa</p>
+          </div>
+        </div>
+
+        <!-- Botões de Redes Sociais -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <!-- WhatsApp -->
+          <a
+            id="share-btn-whatsapp"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <svg class="w-4 h-4 fill-white flex-shrink-0" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <span>WhatsApp</span>
+          </a>
+
+          <!-- Telegram -->
+          <a
+            id="share-btn-telegram"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+            <span>Telegram</span>
+          </a>
+
+          <!-- X (Twitter) -->
+          <a
+            id="share-btn-twitter"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span>X (Twitter)</span>
+          </a>
+
+          <!-- Facebook -->
+          <a
+            id="share-btn-facebook"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            <span>Facebook</span>
+          </a>
+        </div>
+
+        <!-- Botão Nativo Web Share (Dispositivos Móveis e Desktop modernos) -->
+        <button
+          id="btn-native-share"
+          class="w-full py-2.5 rounded-2xl text-xs font-bold text-sky-200 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+        >
+          <i data-lucide="smartphone" class="w-4 h-4 text-sky-400"></i>
+          <span>Mais Opções de Envio (Nativo)</span>
+        </button>
+
+        <!-- Seção Copiar Link Direto -->
+        <div class="pt-2 border-t border-white/10 flex flex-col gap-1.5">
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block text-left">
+            Link Direto:
+          </label>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              id="share-link-input"
+              readonly
+              class="w-full px-3.5 py-2.5 rounded-2xl glass-input text-xs text-slate-200 font-mono select-all focus:outline-none"
+            />
+            <button
+              id="btn-copy-share-link"
+              title="Copiar Link"
+              class="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-lg shadow-sky-500/20 flex items-center gap-1.5 transition-all flex-shrink-0 cursor-pointer"
+            >
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              <span id="copy-share-label">Copiar</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       Banner Fixo Inferior Monetizado (100% Limpo, Sem Popups, Sem Spam)
+       ========================================================================== -->
+  <aside id="fixed-monetized-banner" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-white/10 px-3 py-2 flex flex-col items-center justify-center shadow-2xl transition-all duration-300">
+    <div class="w-full max-w-4xl flex items-center justify-between gap-2 px-1 mb-1">
+      <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        Anúncio Patrocinado Oficial
+      </span>
+      <button
+        id="btn-close-fixed-banner"
+        onclick="closeFixedMonetizedBanner()"
+        class="text-slate-400 hover:text-white glass-pill px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+        title="Fechar anúncio"
+      >
+        <i data-lucide="x" class="w-3 h-3"></i>
+        <span>Fechar</span>
+      </button>
+    </div>
+    
+    <!-- Espaço do Anúncio (Responsivo e com visual moderno) -->
+    <div id="monetized-banner-slot" class="w-full max-w-4xl flex items-center justify-center overflow-hidden rounded-xl bg-slate-900/60 border border-white/10 hover:border-white/20 transition-all min-h-[60px] sm:min-h-[70px]">
+      
+      <!-- Banner de Viagem & Hospedagem Monetizado -->
+      <a
+        id="fixed-ad-link"
+        href="https://www.booking.com/index.html?aid=auraclima"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="w-full h-full px-4 py-2 flex items-center justify-between gap-3 text-left group"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-500/20">
+            <i data-lucide="compass" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-white group-hover:text-sky-300 transition-colors">Planejando Viajar? Reserve Hotéis com até 40% OFF</span>
+              <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 uppercase border border-blue-500/30">Ofertas</span>
+            </div>
+            <p class="text-[11px] text-slate-400 hidden sm:block">Melhores tarifas garantidas com cancelamento grátis pelo Booking.com</p>
+          </div>
+        </div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-blue-600 group-hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all flex-shrink-0 shadow-md">
+          <span>Ver Tarifas</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </div>
+      </a>
+
+    </div>
+  </aside>
+
+  <!-- Scripts da Aplicação -->
+  <script src="js/weather-codes.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/route-planner.js"></script>
+  
+  <script>
+    // Inicializa ícones Lucide no carregamento inicial
+    lucide.createIcons();
+  </script>
+</body>
+</html>
