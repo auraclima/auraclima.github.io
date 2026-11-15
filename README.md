@@ -99,3 +99,15 @@ app-tempo/
 - **HTML5 Canvas API** (Partículas ambientais: chuva, neve, poeira de sol e estrelas)
 - **Open-Meteo API** (Meteorologia global gratuita)
 - **Service Worker & Web App Manifest** (PWA)
+
+---
+
+## 🛡️ Autenticação & Registro de Autoria em Blockchain
+
+Este software possui certificação de anterioridade e integridade criptográfica registrada:
+
+[![Selo de Autoria](https://img.shields.io/badge/Selo_de_Autoria-SA--20261115--1DDF473C-0891b2)](https://selo-de.autoria-tech.workers.dev/?verify=SA-20261115-1DDF473C)
+
+- **Identificador de Registro:** `SA-20261115-1DDF473C`
+- **Verificação Pública e Imediata:** [Consultar Certificado no Selo de Autoria](https://selo-de.autoria-tech.workers.dev/?verify=SA-20261115-1DDF473C)
+- **Proteção Jurídica:** Fundamentada na **Lei Federal nº 9.609/1998** (Lei do Software) e **Lei Federal nº 9.610/1998** (Direitos Autorais), com prova imutável de anterioridade ancorada em blockchain e carimbo de tempo.
